@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:redstone_notes_app/database/database_helper.dart';
 import 'package:redstone_notes_app/ideia_model.dart';
 import 'package:redstone_notes_app/screens/editor_screen.dart';
 import 'package:redstone_notes_app/screens/menu_screen.dart';
@@ -14,21 +15,35 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   final List<Ideia> _ideias = [];
   final PageController _pageController = PageController();
+  final DatabaseHelper _db = DatabaseHelper.instance;
   int _paginaAtual = 0;
 
-  void _adicionarOuAtualizarIdeia(Ideia ideia) {
+  @override
+  void initState() {
+    super.initState();
+    _carregarIdeias();
+  }
+
+  Future<void> _carregarIdeias() async {
+    final ideias = await _db.getAllIdeias();
     setState(() {
-      final index = _ideias.indexWhere((i) => i.id == ideia.id);
-      if (index != -1) {
-        _ideias[index] = ideia;
-      } else {
-        _ideias.add(ideia);
-      }
+      _ideias.clear();
+      _ideias.addAll(ideias);
     });
   }
 
-  void _removerIdeia(Ideia ideia) {
-    showDialog(
+  Future<void> _adicionarOuAtualizarIdeia(Ideia ideia) async {
+    final index = _ideias.indexWhere((i) => i.id == ideia.id);
+    if (index != -1) {
+      await _db.updateIdeia(ideia);
+    } else {
+      await _db.insertIdeia(ideia);
+    }
+    await _carregarIdeias();
+  }
+
+  Future<void> _removerIdeia(Ideia ideia) async {
+    final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Confirmar Exclusão'),
@@ -36,20 +51,20 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           TextButton(
             child: const Text('Cancelar'),
-            onPressed: () => Navigator.of(ctx).pop(),
+            onPressed: () => Navigator.of(ctx).pop(false),
           ),
           TextButton(
             child: const Text('Excluir', style: TextStyle(color: Colors.red)),
-            onPressed: () {
-              setState(() {
-                _ideias.removeWhere((item) => item.id == ideia.id);
-              });
-              Navigator.of(ctx).pop();
-            },
+            onPressed: () => Navigator.of(ctx).pop(true),
           ),
         ],
       ),
     );
+
+    if (confirmed == true) {
+      await _db.deleteIdeia(ideia.id);
+      await _carregarIdeias();
+    }
   }
 
   void _abrirEditor([Ideia? ideiaExistente]) async {
