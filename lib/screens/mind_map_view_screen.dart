@@ -1,5 +1,3 @@
-// lib/screens/mind_map_view_screen.dart
-
 import 'dart:convert';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
@@ -21,12 +19,11 @@ class MindMapViewScreen extends StatefulWidget {
 class _MindMapViewScreenState extends State<MindMapViewScreen> {
   final Graph graph = Graph();
   late BuchheimWalkerConfiguration builder;
-  Node? nodeCentral; // ATUALIZADO: Pode ser nulo durante a inicialização
+  Node? nodeCentral;
   
   final Map<Node, MindMapNodeData> nodeDataMap = {};
   final TransformationController transformationController = TransformationController();
 
-  // NOVO: Função para salvar o estado atual e retornar
   void _saveAndExit() {
     final List<Map<String, dynamic>> nodesJson =
         nodeDataMap.values.map((data) => data.toJson()).toList();
@@ -63,7 +60,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
       ..subtreeSeparation = (100)
       ..orientation = (BuchheimWalkerConfiguration.ORIENTATION_TOP_BOTTOM);
 
-    // ATUALIZADO: Lógica completa de carregamento
     if (widget.ideia.mindMapJson != null && widget.ideia.mindMapJson!.isNotEmpty) {
       final mindMapData = jsonDecode(widget.ideia.mindMapJson!);
       final nodesJson = mindMapData['nodes'] as List;
@@ -78,7 +74,7 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
         idToNodeMap[nodeData.id] = node;
         
         if (nodeCentral == null) {
-          nodeCentral = node; // Assume que o primeiro nó da lista é o central
+          nodeCentral = node;
         }
       }
 
@@ -90,7 +86,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
         }
       }
     } else {
-      // Lógica para criar um mapa novo, usando UUID
       final id = uuid.v4();
       nodeCentral = Node.Id(id); 
       final nodeCentralData = MindMapNodeData(
@@ -121,7 +116,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
     return showDialog<void>(
       context: context,
       builder: (BuildContext context) {
-        // StatefulBuilder permite que o conteúdo do dialog se atualize (ex: ao selecionar cor)
         return StatefulBuilder(
           builder: (context, setDialogState) {
             return AlertDialog(
@@ -153,7 +147,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
                           nodeDataMap[existingNode]!.color = selectedColor;
                           nodeDataMap[existingNode]!.shape = selectedShape;
                         } else {
-                          // ATUALIZADO: Criação de novo nó usando UUID
                           final id = uuid.v4();
                           final newNode = Node.Id(id);
                           nodeDataMap[newNode] = MindMapNodeData(
@@ -177,7 +170,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
     );
   }
   
-  // NOVO: Widget para o seletor de cores
   Widget _buildColorSelector(Color currentColor, ValueChanged<Color> onColorSelected) {
     final List<Color> colors = [
       Colors.blue.shade200, Colors.green.shade200, Colors.red.shade200, 
@@ -202,7 +194,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
     );
   }
 
-  // NOVO: Widget para o seletor de formatos
   Widget _buildShapeSelector(NodeShape currentShape, ValueChanged<NodeShape> onShapeSelected) {
     final Map<NodeShape, IconData> shapes = {
       NodeShape.rectangle: Icons.check_box_outline_blank,
@@ -221,8 +212,7 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
       }).toList(),
     );
   }
-  
-  // Função para EXCLUIR um nó
+
   Future<void> _showDeleteNodeConfirmationDialog(BuildContext context, Node nodeToDelete) async {
     if (nodeToDelete == nodeCentral) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Não é possível excluir o tópico principal.')));
@@ -250,7 +240,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
     );
   }
 
-  // NOVO: Funções para controlar o zoom com botões
   void _zoomIn() {
     transformationController.value.scale(1.2);
     // ignore: invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
@@ -266,7 +255,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // ATUALIZADO: AppBar com botão de salvar
       appBar: AppBar(
         title: Text('Mapa Mental: ${nodeCentral != null ? nodeDataMap[nodeCentral]!.text : ""}'),
         actions: [

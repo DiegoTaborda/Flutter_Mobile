@@ -1,5 +1,3 @@
-// lib/ideia_model.dart
-
 import 'package:uuid/uuid.dart';
 
 var uuid = const Uuid();
@@ -11,7 +9,6 @@ class Ideia {
   final DateTime dataCriacao;
   final DateTime? dataAtividade;
   bool isCompleta;
-  // NOVO: Campo para guardar o JSON do mapa mental
   String? mindMapJson;
 
   Ideia({
@@ -19,7 +16,7 @@ class Ideia {
     required this.texto,
     this.dataAtividade,
     this.isCompleta = false,
-    this.mindMapJson, // Adicionado ao construtor
+    this.mindMapJson,
   })  : id = uuid.v4(),
         dataCriacao = DateTime.now();
 
@@ -30,7 +27,7 @@ class Ideia {
     required this.texto,
     this.dataAtividade,
     required this.isCompleta,
-    this.mindMapJson, // Adicionado ao construtor
+    this.mindMapJson,
   });
 
   Ideia copyWith({
@@ -38,7 +35,7 @@ class Ideia {
     String? texto,
     DateTime? dataAtividade,
     bool? isCompleta,
-    String? mindMapJson, // Adicionado ao copyWith
+    String? mindMapJson,
   }) {
     return Ideia.from(
       id: this.id,
@@ -47,7 +44,7 @@ class Ideia {
       texto: texto ?? this.texto,
       dataAtividade: dataAtividade ?? this.dataAtividade,
       isCompleta: isCompleta ?? this.isCompleta,
-      mindMapJson: mindMapJson ?? this.mindMapJson, // Adicionado ao copyWith
+      mindMapJson: mindMapJson ?? this.mindMapJson,
     );
   }
 }

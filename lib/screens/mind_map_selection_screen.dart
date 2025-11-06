@@ -5,20 +5,17 @@ import 'mind_map_view_screen.dart';
 
 class MindMapSelectionScreen extends StatelessWidget {
   final List<Ideia> ideias;
-  // NOVO: Uma função que será chamada quando uma ideia for atualizada
   final Function(Ideia) onIdeiaUpdated; 
 
   const MindMapSelectionScreen({
     super.key, 
     required this.ideias,
-    required this.onIdeiaUpdated, // NOVO: Adiciona a função ao construtor
+    required this.onIdeiaUpdated,
   });
 
   @override
   Widget build(BuildContext context) {
-    // A lógica de ordenação continua a mesma
     ideias.sort((a, b) {
-      // ...
       return a.dataAtividade!.compareTo(b.dataAtividade!);
     });
 
@@ -54,12 +51,9 @@ class MindMapSelectionScreen extends StatelessWidget {
                   ),
                 );
 
-                // Se a tela do mapa retornou uma ideia atualizada...
                 if (ideiaAtualizada != null && ideiaAtualizada is Ideia) {
                   print('--- CHECKPOINT 2: Ideia recebida de volta ---');
                   print('JSON Recebido: ${ideiaAtualizada.mindMapJson}');
-                  // ...nós usamos nossa nova função de callback para enviá-la
-                  // para a HomeScreen, que sabe o que fazer com ela.
                   onIdeiaUpdated(ideiaAtualizada);
                 }
               },

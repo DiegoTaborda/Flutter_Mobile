@@ -7,7 +7,6 @@ class ProfileScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Pega o usuário logado (sem 'listen' pois não esperamos que mude aqui)
     final user = context.read<AuthProvider>().currentUser;
 
     return Scaffold(

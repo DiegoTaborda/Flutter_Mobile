@@ -62,11 +62,10 @@ class ActivityListPage extends StatelessWidget {
     return Card(
       color: ideia.isCompleta ? Colors.grey.shade200 : null,
       child: ListTile(
-        onTap: () => onEdit(ideia), // Chama a função de editar
+        onTap: () => onEdit(ideia),
         leading: Checkbox(
           value: ideia.isCompleta,
           onChanged: (bool? novoValor) {
-            // Chama a função de marcar/desmarcar
             onToggleComplete(ideia.copyWith(isCompleta: novoValor ?? false));
           },
         ),
@@ -98,7 +97,7 @@ class ActivityListPage extends StatelessWidget {
         ),
         trailing: IconButton(
           icon: const Icon(Icons.delete, color: Colors.redAccent),
-          onPressed: () => onDelete(ideia), // Chama a função de deletar
+          onPressed: () => onDelete(ideia),
         ),
       ),
     );

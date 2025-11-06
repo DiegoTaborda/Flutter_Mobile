@@ -1,5 +1,3 @@
-// lib/screens/register_screen.dart
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -26,7 +24,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   Future<void> _register() async {
     if (!(_formKey.currentState?.validate() ?? false)) {
-      return; // Falha na validação do formulário
+      return;
     }
 
     setState(() { _isLoading = true; _errorMessage = null; });
