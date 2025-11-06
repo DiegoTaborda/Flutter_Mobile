@@ -3,6 +3,7 @@ import 'package:path/path.dart';
 import 'package:flutter/material.dart';
 import '../ideia_model.dart';
 import '../models/mind_map_node_data.dart';
+import '../models/user_model.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -12,7 +13,7 @@ class DatabaseHelper {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDB('mind_map_notes.db');
+    _database = await _initDB('mind_map_notes_v2.db');
     return _database!;
   }
 
@@ -22,26 +23,48 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _onUpgrade,
     );
   }
 
+  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await _createDB(db, newVersion);
+    }
+  }
+
   Future<void> _createDB(Database db, int version) async {
-    // Tabela para as ideias (notas principais)
+    await db.execute('DROP TABLE IF EXISTS mind_map_edges');
+    await db.execute('DROP TABLE IF EXISTS mind_map_nodes');
+    await db.execute('DROP TABLE IF EXISTS ideias');
+    await db.execute('DROP TABLE IF EXISTS users');
+
+    await db.execute('''
+      CREATE TABLE users (
+        id TEXT PRIMARY KEY,
+        nome TEXT NOT NULL,
+        email TEXT NOT NULL UNIQUE,
+        idade INTEGER NOT NULL,
+        password_hash TEXT NOT NULL
+      )
+    ''');
+
     await db.execute('''
       CREATE TABLE ideias (
         id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL, 
         titulo TEXT NOT NULL,
         texto TEXT NOT NULL,
         dataCriacao TEXT NOT NULL,
         dataAtividade TEXT,
         isCompleta INTEGER NOT NULL,
-        mindMapJson TEXT
+        mindMapJson TEXT,
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
       )
     ''');
 
-    // Tabela para os nós do mapa mental
     await db.execute('''
       CREATE TABLE mind_map_nodes (
         id TEXT PRIMARY KEY,
@@ -53,7 +76,6 @@ class DatabaseHelper {
       )
     ''');
 
-    // Tabela para as conexões entre nós
     await db.execute('''
       CREATE TABLE mind_map_edges (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,11 +89,52 @@ class DatabaseHelper {
     ''');
   }
 
-  // Métodos para Ideias
-  Future<String> insertIdeia(Ideia ideia) async {
+  Future<AppUser> createUser(String id, String nome, String email, int idade, String passwordHash) async {
+    final db = await database;
+    await db.insert('users', {
+      'id': id,
+      'nome': nome,
+      'email': email,
+      'idade': idade,
+      'password_hash': passwordHash,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+    
+    return AppUser(id: id, nome: nome, email: email, idade: idade);
+  }
+
+  Future<Map<String, dynamic>?> getUserForLogin(String email) async {
+    final db = await database;
+    final maps = await db.query(
+      'users',
+      where: 'email = ?',
+      whereArgs: [email],
+    );
+
+    if (maps.isNotEmpty) {
+      return maps.first;
+    }
+    return null;
+  }
+
+  Future<AppUser?> getUserById(String id) async {
+    final db = await database;
+    final maps = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+
+    if (maps.isNotEmpty) {
+      return AppUser.fromMap(maps.first);
+    }
+    return null;
+  }
+
+  Future<String> insertIdeia(Ideia ideia, String userId) async {
     final db = await database;
     await db.insert('ideias', {
       'id': ideia.id,
+      'user_id': userId,
       'titulo': ideia.titulo,
       'texto': ideia.texto,
       'dataCriacao': ideia.dataCriacao.toIso8601String(),
@@ -107,9 +170,14 @@ class DatabaseHelper {
     throw Exception('ID $id not found');
   }
 
-  Future<List<Ideia>> getAllIdeias() async {
+  Future<List<Ideia>> getAllIdeias(String userId) async {
     final db = await database;
-    final result = await db.query('ideias', orderBy: 'dataCriacao DESC');
+    final result = await db.query(
+      'ideias',
+      where: 'user_id = ?',
+      whereArgs: [userId],
+      orderBy: 'dataCriacao DESC',
+    );
 
     return result.map((json) => Ideia.from(
       id: json['id'] as String,
@@ -124,7 +192,7 @@ class DatabaseHelper {
     )).toList();
   }
 
-  Future<int> updateIdeia(Ideia ideia) async {
+  Future<int> updateIdeia(Ideia ideia, String userId) async {
     final db = await database;
     return db.update(
       'ideias',
@@ -135,21 +203,20 @@ class DatabaseHelper {
         'isCompleta': ideia.isCompleta ? 1 : 0,
         'mindMapJson': ideia.mindMapJson,
       },
-      where: 'id = ?',
-      whereArgs: [ideia.id],
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [ideia.id, userId],
     );
   }
 
-  Future<int> deleteIdeia(String id) async {
+  Future<int> deleteIdeia(String ideiaId, String userId) async {
     final db = await database;
     return await db.delete(
       'ideias',
-      where: 'id = ?',
-      whereArgs: [id],
+      where: 'id = ? AND user_id = ?',
+      whereArgs: [ideiaId, userId],
     );
   }
 
-  // Métodos para nós do mapa mental
   Future<void> insertMindMapNode(String ideiaId, MindMapNodeData node) async {
     final db = await database;
     await db.insert('mind_map_nodes', {
@@ -180,7 +247,6 @@ class DatabaseHelper {
     )).toList();
   }
 
-  // Métodos para conexões do mapa mental
   Future<void> insertMindMapEdge(
     String ideiaId,
     String sourceNodeId,
@@ -208,7 +274,6 @@ class DatabaseHelper {
     }).toList();
   }
 
-  // Método para fechar o banco de dados
   Future<void> close() async {
     final db = await instance.database;
     db.close();

@@ -1,7 +1,5 @@
-// editor_screen.dart
-
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // IMPORTAR O PACOTE DE FORMATAÇÃO
+import 'package:intl/intl.dart';
 import 'package:redstone_notes_app/ideia_model.dart';
 
 class EditorScreen extends StatefulWidget {
@@ -15,8 +13,7 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   final _tituloController = TextEditingController();
   final _textoController = TextEditingController();
-  
-  // NOVA VARIÁVEL DE ESTADO PARA GUARDAR A DATA
+
   DateTime? _dataAtividadeSelecionada;
 
   @override
@@ -26,12 +23,10 @@ class _EditorScreenState extends State<EditorScreen> {
     if (widget.ideiaExistente != null) {
       _tituloController.text = widget.ideiaExistente!.titulo;
       _textoController.text = widget.ideiaExistente!.texto;
-      // INICIALIZA A DATA SE ELA JÁ EXISTIR
       _dataAtividadeSelecionada = widget.ideiaExistente!.dataAtividade;
     }
   }
 
-  // NOVA FUNÇÃO PARA MOSTRAR O SELETOR DE DATA
   Future<void> _selecionarData(BuildContext context) async {
     final DateTime? dataEscolhida = await showDatePicker(
       context: context,
@@ -54,6 +49,38 @@ class _EditorScreenState extends State<EditorScreen> {
     super.dispose();
   }
 
+  void _salvarAtividade() {
+    final titulo = _tituloController.text;
+    final texto = _textoController.text;
+
+    if (titulo.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('O título não pode estar em branco.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (widget.ideiaExistente == null) {
+      final ideia = Ideia(
+        titulo: titulo,
+        texto: texto,
+        dataAtividade: _dataAtividadeSelecionada,
+      );
+      Navigator.pop(context, ideia);
+    } else {
+      final ideiaAtualizada = widget.ideiaExistente!.copyWith(
+        titulo: titulo,
+        texto: texto,
+        dataAtividade: _dataAtividadeSelecionada,
+      );
+      Navigator.pop(context, ideiaAtualizada);
+    }
+  }
+
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -71,7 +98,6 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
             const SizedBox(height: 16),
 
-            // NOVO WIDGET PARA SELECIONAR A DATA
             Row(
               children: [
                 Expanded(
@@ -104,23 +130,7 @@ class _EditorScreenState extends State<EditorScreen> {
             ),
             const SizedBox(height: 16),
             ElevatedButton(
-              onPressed: () {
-                if (widget.ideiaExistente == null) {
-                  final ideia = Ideia(
-                    titulo: _tituloController.text,
-                    texto: _textoController.text,
-                    dataAtividade: _dataAtividadeSelecionada, // PASSA A DATA
-                  );
-                  Navigator.pop(context, ideia);
-                } else {
-                  final ideiaAtualizada = widget.ideiaExistente!.copyWith(
-                    titulo: _tituloController.text,
-                    texto: _textoController.text,
-                    dataAtividade: _dataAtividadeSelecionada, // PASSA A DATA
-                  );
-                  Navigator.pop(context, ideiaAtualizada);
-                }
-              },
+              onPressed: _salvarAtividade,
               child: const Text('Salvar'),
             ),
           ],

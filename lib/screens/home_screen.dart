@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; 
 import 'package:redstone_notes_app/database/database_helper.dart';
 import 'package:redstone_notes_app/ideia_model.dart';
+import 'package:redstone_notes_app/providers/auth_provider.dart';
 import 'package:redstone_notes_app/screens/editor_screen.dart';
 import 'package:redstone_notes_app/screens/menu_screen.dart';
 import 'package:redstone_notes_app/screens/mind_map_selection_screen.dart';
@@ -18,14 +20,25 @@ class _HomeScreenState extends State<HomeScreen> {
   final DatabaseHelper _db = DatabaseHelper.instance;
   int _paginaAtual = 0;
 
+  String? _currentUserId;
+
   @override
   void initState() {
     super.initState();
-    _carregarIdeias();
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _carregarIdeias();
+    });
   }
 
+
   Future<void> _carregarIdeias() async {
-    final ideias = await _db.getAllIdeias();
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (authProvider.currentUser == null) return; // Segurança
+
+    _currentUserId = authProvider.currentUser!.id;
+    
+    final ideias = await _db.getAllIdeias(_currentUserId!);
     setState(() {
       _ideias.clear();
       _ideias.addAll(ideias);
@@ -33,16 +46,20 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _adicionarOuAtualizarIdeia(Ideia ideia) async {
+    if (_currentUserId == null) return;
+
     final index = _ideias.indexWhere((i) => i.id == ideia.id);
     if (index != -1) {
-      await _db.updateIdeia(ideia);
+      await _db.updateIdeia(ideia, _currentUserId!);
     } else {
-      await _db.insertIdeia(ideia);
+      await _db.insertIdeia(ideia, _currentUserId!);
     }
     await _carregarIdeias();
   }
 
   Future<void> _removerIdeia(Ideia ideia) async {
+    if (_currentUserId == null) return; 
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -62,7 +79,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
 
     if (confirmed == true) {
-      await _db.deleteIdeia(ideia.id);
+      await _db.deleteIdeia(ideia.id, _currentUserId!);
       await _carregarIdeias();
     }
   }
@@ -104,12 +121,27 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  void _logout() {
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    authProvider.logout();
+  }
+
   @override
   Widget build(BuildContext context) {
     const List<String> titulos = ['Minhas Atividades', 'Mapas Mentais'];
 
     return Scaffold(
-      appBar: AppBar(title: Text(titulos[_paginaAtual])),
+      appBar: AppBar(
+        title: Text(titulos[_paginaAtual]),
+        actions: [
+          // NOVO: Botão de Sair
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: _logout,
+          )
+        ],
+      ),
       body: PageView(
         controller: _pageController,
         onPageChanged: (index) => setState(() => _paginaAtual = index),
@@ -120,10 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
             onDelete: (ideia) => _removerIdeia(ideia),
             onToggleComplete: (ideia) => _adicionarOuAtualizarIdeia(ideia),
           ),
-          // ATUALIZE ESTA LINHA:
           MindMapSelectionScreen(
             ideias: _ideias,
-            // Passamos a nossa função de atualizar para a tela de seleção
             onIdeiaUpdated: (ideia) => _adicionarOuAtualizarIdeia(ideia),
           ),
         ],

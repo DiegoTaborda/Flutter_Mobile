@@ -1,11 +1,8 @@
-// lib/models/mind_map_node_data.dart
-
 import 'package:flutter/material.dart';
 
 enum NodeShape { rectangle, circle, cloud, diamond }
 
 class MindMapNodeData {
-  // ADICIONADO: Um ID único e final para cada nó de dados.
   final String id;
   String text;
   Color color;
@@ -18,7 +15,6 @@ class MindMapNodeData {
     this.shape = NodeShape.rectangle,
   });
 
-  // NOVO: Método para converter o objeto em um Map (para JSON)
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -28,7 +24,6 @@ class MindMapNodeData {
     };
   }
 
-  // NOVO: Método para criar um objeto a partir de um Map (vindo do JSON)
   factory MindMapNodeData.fromJson(Map<String, dynamic> json) {
     return MindMapNodeData(
       id: json['id'],

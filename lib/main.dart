@@ -1,43 +1,58 @@
-// lib/main.dart
+// lib/main.dart (ATUALIZADO)
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:redstone_notes_app/database/database_helper.dart'; // NOVO IMPORT
+import 'package:redstone_notes_app/providers/auth_provider.dart'; 
+import 'package:redstone_notes_app/screens/auth_gate_screen.dart'; // IMPORTAR O NOVO GATE
 import 'package:redstone_notes_app/theme_provider.dart';
-import 'package:redstone_notes_app/screens/home_screen.dart';
+// NOVO: Importa o repositório
+// Certifique-se que o caminho do import está correto
+import 'package:redstone_notes_app/services/auth_repository.dart'; 
 
 void main() {
   runApp(
-    // O ChangeNotifierProvider disponibiliza o ThemeProvider para todo o app
-    ChangeNotifierProvider(
-      create: (_) => ThemeProvider(),
-      child: const MyApp(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeProvider()), //
+        
+        // ATUALIZADO: Agora injetamos o AuthRepository no AuthProvider
+        // 1. Criamos uma instância do repositório, que usa o DB.
+        // 2. Criamos o AuthProvider e passamos o repositório para ele.
+        ChangeNotifierProvider(
+          create: (_) => AuthProvider(
+            AuthRepository(DatabaseHelper.instance),
+          ),
+        ), 
+      ],
+      child: const MyApp(), //
     ),
   );
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  const MyApp({super.key}); //
 
   @override
   Widget build(BuildContext context) {
-    // Consumer escuta as mudanças no ThemeProvider e reconstrói a MaterialApp
-    return Consumer<ThemeProvider>(
+    return Consumer<ThemeProvider>( //
       builder: (context, themeProvider, child) {
         return MaterialApp(
-          title: 'Redstone Notes',
-          debugShowCheckedModeBanner: false,
-          themeMode: themeProvider.themeMode, // Usa o modo de tema do provider
-          theme: ThemeData(
+          title: 'Redstone Notes', //
+          debugShowCheckedModeBanner: false, //
+          themeMode: themeProvider.themeMode, //
+          theme: ThemeData( //
             brightness: Brightness.light,
             primarySwatch: Colors.blue,
             useMaterial3: true,
           ),
-          darkTheme: ThemeData(
+          darkTheme: ThemeData( //
             brightness: Brightness.dark,
             primarySwatch: Colors.blue,
             useMaterial3: true,
           ),
-          home: const HomeScreen(),
+          // ATUALIZADO: A tela inicial agora é o AuthGate
+          home: const AuthGateScreen(), //
         );
       },
     );
