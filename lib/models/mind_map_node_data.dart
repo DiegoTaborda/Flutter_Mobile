@@ -7,20 +7,39 @@ class MindMapNodeData {
   String text;
   Color color;
   NodeShape shape;
+  String? imagePath;
 
   MindMapNodeData({
-    required this.id, // O ID agora é obrigatório
+    required this.id,
     required this.text,
     this.color = Colors.blue,
     this.shape = NodeShape.rectangle,
+    this.imagePath,
   });
+
+  MindMapNodeData copyWith({
+    String? id,
+    String? text,
+    Color? color,
+    NodeShape? shape,
+    String? imagePath,
+  }) {
+    return MindMapNodeData(
+      id: id ?? this.id,
+      text: text ?? this.text,
+      color: color ?? this.color,
+      shape: shape ?? this.shape,
+      imagePath: imagePath ?? this.imagePath,
+    );
+  }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
       'text': text,
-      'color': color.value, // Salvamos o valor inteiro da cor
-      'shape': shape.name, // Salvamos o nome do enum como String
+      'color': color.value,
+      'shape': shape.name,
+      'imagePath': imagePath,
     };
   }
 
@@ -33,6 +52,7 @@ class MindMapNodeData {
         (e) => e.name == json['shape'],
         orElse: () => NodeShape.rectangle,
       ),
+      imagePath: json['imagePath'],
     );
   }
 }

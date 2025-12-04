@@ -1,7 +1,9 @@
 import 'dart:convert';
+import 'dart:io';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:graphview/GraphView.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:redstone_notes_app/ideia_model.dart';
 import 'package:redstone_notes_app/models/mind_map_node_data.dart';
 import 'package:uuid/uuid.dart';
@@ -23,6 +25,58 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
   
   final Map<Node, MindMapNodeData> nodeDataMap = {};
   final TransformationController transformationController = TransformationController();
+  final ImagePicker _picker = ImagePicker();
+
+  Future<String?> _pickImage(BuildContext context) async {
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Tirar Foto'),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Galeria'),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (source == null) return null;
+
+    final XFile? file = await _picker.pickImage(source: source);
+    return file?.path;
+  }
+
+  void _viewFullScreenImage(String imagePath) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => Scaffold(
+          backgroundColor: Colors.black,
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            iconTheme: const IconThemeData(color: Colors.white),
+            title: const Text("Visualizar Imagem", style: TextStyle(color: Colors.white)),
+          ),
+          body: Center(
+            child: InteractiveViewer(
+              panEnabled: true,
+              minScale: 0.5,
+              maxScale: 4.0,
+              child: Image.file(File(imagePath)),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 
   void _saveAndExit() {
     final List<Map<String, dynamic>> nodesJson =
@@ -112,6 +166,7 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
     final TextEditingController textController = TextEditingController(text: existingData?.text ?? '');
     Color selectedColor = existingData?.color ?? Colors.blue.shade200;
     NodeShape selectedShape = existingData?.shape ?? NodeShape.rectangle;
+    String? tempImagePath = existingData?.imagePath; 
 
     return showDialog<void>(
       context: context,
@@ -132,6 +187,71 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
                     const SizedBox(height: 20),
                     const Text('Formato do Nó:'),
                     _buildShapeSelector(selectedShape, (shape) => setDialogState(() => selectedShape = shape)),
+                    
+                    const SizedBox(height: 20),
+                    const Divider(),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Imagem:"),
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.camera_alt),
+                              onPressed: () async {
+                                final path = await _pickImage(context);
+                                if (path != null) {
+                                  setDialogState(() => tempImagePath = path);
+                                }
+                              },
+                              tooltip: 'Adicionar/Alterar Foto',
+                            ),
+                            if (tempImagePath != null)
+                              IconButton(
+                                icon: const Icon(Icons.delete, color: Colors.red),
+                                onPressed: () {
+                                  setDialogState(() => tempImagePath = null);
+                                },
+                                tooltip: 'Remover Foto',
+                              ),
+                          ],
+                        )
+                      ],
+                    ),
+                    if (tempImagePath != null)
+                      GestureDetector(
+                        onTap: () => _viewFullScreenImage(tempImagePath!),
+                        child: Container(
+                          margin: const EdgeInsets.only(top: 8),
+                          height: 120,
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(8),
+                                child: Image.file(
+                                  File(tempImagePath!),
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withOpacity(0.3),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Center(
+                                  child: Icon(Icons.zoom_in, color: Colors.white, size: 40),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                   ],
                 ),
               ),
@@ -143,9 +263,13 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
                     if (textController.text.isNotEmpty) {
                       setState(() {
                         if (isEditing) {
-                          nodeDataMap[existingNode]!.text = textController.text;
-                          nodeDataMap[existingNode]!.color = selectedColor;
-                          nodeDataMap[existingNode]!.shape = selectedShape;
+                          var oldData = nodeDataMap[existingNode]!;
+                          nodeDataMap[existingNode] = oldData.copyWith(
+                            text: textController.text,
+                            color: selectedColor,
+                            shape: selectedShape,
+                            imagePath: tempImagePath
+                          );
                         } else {
                           final id = uuid.v4();
                           final newNode = Node.Id(id);
@@ -153,7 +277,8 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
                             id: id,
                             text: textController.text, 
                             color: selectedColor, 
-                            shape: selectedShape
+                            shape: selectedShape,
+                            imagePath: tempImagePath, 
                           );
                           graph.addEdge(parentNode!, newNode);
                         }
@@ -268,7 +393,7 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
       body: Stack(
         children: [
           InteractiveViewer(
-            transformationController: transformationController, // Conecta o controller
+            transformationController: transformationController, 
             constrained: false,
             boundaryMargin: const EdgeInsets.all(200),
             minScale: 0.1,
@@ -280,7 +405,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
               builder: (Node node) => _buildNodeWidget(node),
             ),
           ),
-          // NOVO: Botões de Zoom
           Positioned(
             bottom: 16, right: 16,
             child: Column(
@@ -296,21 +420,44 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
     );
   }
 
-  // MODIFICADO: Widget agora renderiza cor e formato dinamicamente
   Widget _buildNodeWidget(Node node) {
     final nodeData = nodeDataMap[node]!;
 
     Widget child = Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: nodeData.color,
         borderRadius: nodeData.shape == NodeShape.rectangle ? BorderRadius.circular(8) : null,
         shape: nodeData.shape == NodeShape.circle ? BoxShape.circle : BoxShape.rectangle,
       ),
-      child: Center(child: Text(nodeData.text, style: const TextStyle(fontSize: 12), textAlign: TextAlign.center)),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+           if (nodeData.imagePath != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: Image.file(
+                  File(nodeData.imagePath!),
+                  width: 60,
+                  height: 60,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => 
+                    const Icon(Icons.broken_image, size: 40, color: Colors.white54),
+                ),
+              ),
+            ),
+          Text(
+            nodeData.text, 
+            style: const TextStyle(fontSize: 12), 
+            textAlign: TextAlign.center
+          ),
+        ],
+      ),
     );
 
-    // Aplica o formato customizado
     switch (nodeData.shape) {
       case NodeShape.cloud:
         child = ClipPath(clipper: CloudClipper(), child: child);
@@ -318,7 +465,7 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
       case NodeShape.diamond:
         child = Transform.rotate(angle: math.pi / 4, child: ClipPath(clipper: DiamondClipper(), child: child));
         break;
-      default: // Rectangle e Circle já são tratados na decoração
+      default: 
         break;
     }
 
@@ -331,7 +478,6 @@ class _MindMapViewScreenState extends State<MindMapViewScreen> {
   }
 }
 
-// NOVO: Clipper customizado para o formato de nuvem
 class CloudClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {
@@ -347,7 +493,6 @@ class CloudClipper extends CustomClipper<Path> {
   bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }
 
-// NOVO: Clipper customizado para o formato de losango
 class DiamondClipper extends CustomClipper<Path> {
   @override
   Path getClip(Size size) {

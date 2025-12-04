@@ -23,7 +23,7 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: _createDB,
       onUpgrade: _onUpgrade,
     );
@@ -32,6 +32,13 @@ class DatabaseHelper {
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
       await _createDB(db, newVersion);
+    }
+    if (oldVersion < 3) {
+      try {
+        await db.execute('ALTER TABLE mind_map_nodes ADD COLUMN imagePath TEXT;');
+      } catch (e) {
+        print("Erro ao adicionar coluna imagePath: $e");
+      }
     }
   }
 
@@ -72,6 +79,7 @@ class DatabaseHelper {
         text TEXT NOT NULL,
         color INTEGER NOT NULL,
         shape TEXT NOT NULL,
+        imagePath TEXT, 
         FOREIGN KEY (ideia_id) REFERENCES ideias (id) ON DELETE CASCADE
       )
     ''');
@@ -225,7 +233,8 @@ class DatabaseHelper {
       'text': node.text,
       'color': node.color.value,
       'shape': node.shape.name,
-    });
+      'imagePath': node.imagePath,
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
   }
 
   Future<List<MindMapNodeData>> getMindMapNodes(String ideiaId) async {
@@ -244,6 +253,7 @@ class DatabaseHelper {
         (e) => e.name == json['shape'],
         orElse: () => NodeShape.rectangle,
       ),
+      imagePath: json['imagePath'] as String?,
     )).toList();
   }
 
